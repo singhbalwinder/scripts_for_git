@@ -1,0 +1,225 @@
+#!/bin/csh
+# script to 
+#   create the directory structure for a CESM case
+#   build the model
+#   tell you what to do next
+
+#set echo verbose
+#set desired walltime for the job
+set modify_runtime = 0      #0:Modify runtime; 1: do not modify runtime
+set wall_time = 00:15:00    #run time if modify_runtime is 0
+ 
+#set desired queue for the job
+set modify_q = 1            #0:Modify job queue; 1: do not modify job queue
+set queue    = <queue-name> #queue name, if modify_q is 0
+
+
+## ====================================================================
+#   case 
+## ====================================================================
+set locdir = `pwd`
+set met_data_yr = '0001'
+set met_data_mn = '07'
+set met_data_dy = '01'
+
+setenv CCSMTAG       cesm1_0_3_nn
+setenv CASE          zmconvke_def_0001-07-01_pert
+setenv mymodscam     $locdir/mods_$CASE  # will link cam files in this dir before building model
+mkdir -p $mymodscam
+
+## ====================================================================
+#   define directories
+## ====================================================================
+
+setenv RES       f19_f19
+setenv COMPSET   FC5
+setenv MACH      cascade_int
+setenv PTMP      /dtemp/$LOGNAME/csmruns
+setenv CCSMROOT  /home/sing201/cesm_collections/${CCSMTAG} 
+setenv CASEROOT  /home/$LOGNAME/CSM/CMIP5/$CASE
+setenv RUNDIR    {$PTMP}/runs/$CASE 
+setenv DATADIR   '/dtemp/sing201/inputdata/CAM/CSMDATA_CAM/aerocom/csmdata/'
+setenv DIN_LOC_ROOT_CSMDATA $DATADIR
+
+
+## ====================================================================
+#   create new case, configure, compile and run
+## ====================================================================
+
+/bin/rm -rf $CASEROOT 
+
+#remove old log files
+/bin/rm /dtemp/$LOGNAME/csmruns/$CASE/run/*log*
+/bin/rm /dtemp/$LOGNAME/csmruns/$CASE/run/fort.*
+/bin/rm /dtemp/$LOGNAME/csmruns/$CASE/run/*.nc
+/bin/rm /dtemp/$LOGNAME/csmruns/$CASE/$CASE.ccsm.exe*
+#remove old hostory files                                                                                                                                                                                            
+/bin/rm -rf /dtemp/$LOGNAME/archive/$CASE/*
+
+#remove mods directory object files
+if ( -d $PTMP/$CASE/bld/atm/obj/ ) then
+    foreach file(`ls $locdir/mods_$CASE/ `)
+    echo removing mod and object files for: $file
+    set tmp_file = `echo $file |cut -d'.' -f1`
+    cd $PTMP/$CASE/bld/atm/obj/
+    /bin/rm $tmp_file.* > /dev/null
+    cd -    
+    end
+endif
+
+
+#------------------
+## create new case
+#------------------
+
+cd  $CCSMROOT/scripts
+
+./create_newcase -max_tasks_per_node 16 -din_loc_root_csmdata $DATADIR -case $CASEROOT -mach $MACH -res $RES  -compset $COMPSET
+
+
+#------------------
+## set environment
+#------------------
+
+cd $CASEROOT
+
+set ntasks = 64 #135
+
+./xmlchange -file env_mach_pes.xml -id NTASKS_ATM -val $ntasks
+./xmlchange -file env_mach_pes.xml -id NTASKS_LND -val $ntasks
+./xmlchange -file env_mach_pes.xml -id NTASKS_ICE -val $ntasks
+./xmlchange -file env_mach_pes.xml -id NTASKS_OCN -val $ntasks
+./xmlchange -file env_mach_pes.xml -id NTASKS_CPL -val $ntasks
+./xmlchange -file env_mach_pes.xml -id NTASKS_GLC -val $ntasks
+
+### edit runtime options: edit env_run.xml
+
+
+./xmlchange -file env_conf.xml  -id RUN_STARTDATE  -val {$met_data_yr}-{$met_data_mn}-{$met_data_dy}
+### set the machine load : edit env_mach_pes.xml 
+# I set this based on http://www.cesm.ucar.edu/models/cesm1.0/timing/
+
+
+
+### edit runtime options: edit env_run.xml
+
+set-run-opts:
+cd $CASEROOT
+
+./xmlchange  -file env_run.xml -id  RESUBMIT -val '0' 
+./xmlchange  -file env_run.xml -id  STOP_N  -val '1' 
+./xmlchange  -file env_run.xml -id  STOP_OPTION  -val 'nsteps' 
+./xmlchange  -file env_run.xml -id  REST_N  -val '1' 
+./xmlchange  -file env_run.xml -id  REST_OPTION  -val 'nmonths' 
+./xmlchange  -file env_run.xml -id  DOUT_L_MS  -val 'FALSE'    
+./xmlchange  -file env_run.xml -id  BFBFLAG  -val 'TRUE'
+
+### edit configure opton: edit env_conf.xml
+
+#BSINGH - Add path to emission files
+./xmlchange  -file env_run.xml -id DIN_LOC_ROOT   -val $DATADIR
+
+### edit configure opton: edit env_conf.xml
+
+cat <<EOF >! user_nl_cam
+&camexp
+nhtfrq                  = 1
+mfilt                   = 1
+ndens                   = 1
+avgflag_pertape         = 'I'
+ncdata                  = '/dtemp/sing201/cam/inic_files/YE000.cam2.i.${met_data_yr}-${met_data_mn}-${met_data_dy}-00000.nc'
+history_aerosol         = .true.
+phys_debug_lat          = 29.36842105263158
+phys_debug_lon          = 57.5 
+/
+EOF
+
+
+#------------------
+## configure
+#------------------
+config:
+cd $CASEROOT
+./configure -cleanmach
+./configure -cleanall
+./configure -cleannamelist
+./configure -case
+
+
+### allow make to use more tasks 
+./xmlchange -file env_build.xml -id GMAKE_J -val '8'
+### force cartesian
+./xmlchange -file env_build.xml -id CICE_DECOMPTYPE -val 'cartesian'
+
+#./xmlchange -file env_build.xml -id CICE_MXBLCKS -val '9'
+
+#BSINGH - Force roundrobin
+#./xmlchange -file env_build.xml -id CICE_DECOMPTYPE -val 'roundrobin'
+
+
+#BSINGH - change so that the model builds in csmruns directory
+./xmlchange -file env_build.xml -id EXEROOT   -val $PTMP/$CASE/bld
+./xmlchange -file env_build.xml -id RUNDIR   -val $PTMP/$CASE/run
+# Extra timing?
+./xmlchange -file env_build.xml -id DEBUG -val 'TRUE'
+#./xmlchange -file env_build.xml -id PIO_CONFIG_OPTS -val ' '
+
+grep CICE_DECOMPTYPE env_build.xml
+
+modify:
+## To modify source code
+cd $CASEROOT
+ 
+if (-e ${mymodscam}) then
+    ln -s ${mymodscam}/* SourceMods/src.cam # put your mods in here
+    ln -s $locdir/ice_calendar.F90 SourceMods/src.cice/ # put your mods in here
+endif
+
+#------------------
+##  Interactively build the model
+#------------------
+
+build:
+cd $CASEROOT
+./$CASE.$MACH.build
+ln -sf $locdir/physup_calls.txt /dtemp/$LOGNAME/csmruns/$CASE/run/                            #link physup file
+
+
+
+
+#Modify job submition script's wall time 
+#Following sed commands cover a range of machines but not all.
+#Please add this command for your machine if it is not included below
+if ( modify_runtime == 0 ) then
+    cd  $CASEROOT
+    sed -i 's/walltime=.*/walltime='$wall_time' /'                   {$CASE}.run
+    sed -i 's/walltime=.*/walltime='$wall_time' /'                   {$CASE}.run
+    sed -i 's/--time=.*/--time='$wall_time' /'                       {$CASE}.run
+    sed -i 's/^#BSUB -W.*/#BSUB -W '$wall_time' /'                   {$CASE}.run
+    sed -i 's/wall_clock_limit =.*/wall_clock_limit ='$wall_time' /' {$CASE}.run
+endif
+ 
+#Modify job queues (these statements cover a range of machines)
+#Following sed commands cover a range of machines but not all.
+#Please add this command for your machine if it is not included below
+if ( modify_q == 0 ) then
+    cd  $CASEROOT
+    #for queues
+    sed -i 's/^#PBS -q.*/#PBS -q '$queue' /'                     {$CASE}.run
+    sed -i 's/^#BSUB -q.*/#BSUB -q '$queue' /'                   {$CASE}.run
+    sed -i 's/^#MSUB -q.*/#MSUB -q '$queue' /'                   {$CASE}.run
+endif
+
+#Check if the model compiled successfully
+cd  $CASEROOT
+
+set bld_cmp   = `grep BUILD_COMPLETE env_build.xml`                   #extract whole string which has BUILD_COMPLETE
+set split_str = `echo $bld_cmp | awk '{split($0,a,"="); print a[3]}'` #split string at "="
+set result    = `echo $split_str | cut -c 2-5`                        #true or false; "true" has 4 (2 to 5) alphabets
+unset echo verbose
+if ( $result == "TRUE" ) then
+    msub *.run                                                        #submit script
+else
+    set result    = `echo $split_str | cut -c 2-6`                    #compute true or false string again as "false" has 5 (2 to 6) alphabets
+    echo 'Build not complete, BUILD_COMPLETE is:' $result
+endif

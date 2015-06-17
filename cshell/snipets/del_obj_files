@@ -1,0 +1,14 @@
+set obj_files_to_delete = ( ocn_comp_mct  )
+
+
+
+#later in the code just before build
+
+#delete object files
+cd $PTMP/$CASE/bld
+foreach obj_file($obj_files_to_delete)
+     set file_to_del = `find . -iname \*{$obj_file}\*`
+     foreach del_file($file_to_del)
+        /bin/rm -rf $del_file
+     end
+end
