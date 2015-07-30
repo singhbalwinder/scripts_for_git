@@ -7,8 +7,26 @@
 #-------------------------------------#
 
 #For comparing to a baseline
-set comp_base     = 1                                         #1=compare with baselines; 0= DO NOT compare with  baselines
-set comp_base_id  = 'baselines_id01_f8c16cef46_03312015_nag531mpi19ncdf430'         #id or name of the baseline directory to compare against
+set comp_base        = 0                                         #1=compare with baselines; 0= DO NOT compare with  baselines
+set comp_base_id     = ''         #id or name of the baseline directory to compare against
+
+set unqid            = id02       #short unique id to append to these tests
+
+set do_nag           = 1          #1=generate NAG baselines; 0=Do not generate NAG baselines 
+set do_int           = 0          #1=generate Intel baselines; 0=Do not generate Intel baselines 
+
+set clone_fresh_code = 0          #1-clone fresh copy of the code; 0=Use existing copy of the code
+
+#NOTE: acme_developer is subset of acme_integration
+#set cat        = acme_integration
+#set cat_short  = acme_int #keep it short
+
+#set cat        = acme_developer
+#set cat_short  = acme_dev #keep it short
+
+set cat        = acme_balli
+set cat_short  = acme_bal #keep it short
+
 
 #-------------------------------------#
 #-------------------------------------#
@@ -23,10 +41,13 @@ set dir_to_store  = baselines_by_date
 set git_clone     = 'git@github.com:ACME-Climate/ACME.git'
 
 #paths
-set csmrun_old    = /dtemp/sing201/csmruns                     #csmrun directory mentioed in the config_machines.xml
-set csmroot_new   = /dtemp/sing201/acme_testing/reg_tests/     #Directory where all files from this testing are stored
-set base_dir      = /dtemp/sing201/acme_testing/acme_baselines #Baseline to compare against
-set script_path   = ~sing201/trialProgs/cshell/bsingh_create_test_ver2.csh #script to invoke to run all the tests
+set csmrun_old     = /dtemp/sing201/csmruns                     #csmrun directory mentioed in the config_machines.xml
+set csmroot_new    = /dtemp/sing201/acme_testing/reg_tests/     #Directory where all files from this testing are stored
+set base_dir       = /dtemp/sing201/acme_testing/acme_baselines #Baseline to compare against
+set script_path    = ~sing201/trialProgs/cshell/bsingh_create_test_ver2.csh #script to invoke to run all the tests
+set intel_scr_path = ~/scripts_for_git/cshell/other_scr/intel_acme.csh
+set nag_scr_path   = ~/scripts_for_git/cshell/other_scr/nag_acme.csh
+
 
 #for generating baseline
 set gen_base      = 1                                         #1=generate baselines; 0= DO NOT generate baselines
@@ -41,34 +62,58 @@ set gen_base      = 1                                         #1=generate baseli
 
 ###WARNING:DO NOT modify the following code unless you are absolutely sure about it!!
 
+if($do_nag != 1 && $do_int != 1) then
+    echo 'Please select atleast one compiler to run test with...'
+    echo 'Exiting ....'
+    exit
+endif
+
 set mach   = cascade                                    #machine name
 set locdir = `pwd`
 
-echo '->Clone fresh copy of the code...'
-git clone $git_clone >& /dev/null
+if ( $clone_fresh_code == 1 ) then
+    echo '->Clone fresh copy of the code...'
+    git clone $git_clone >& /dev/null
+    echo '->Fetch and reset hard so that source code points to most recent copy of the master branch ...'
+    git fetch origin >& /dev/null
+    git reset --hard origin/master >& /dev/null
+else
+    echo '->Using existing code [DID NOT clone fresh copy]...'
+endif
+if ( !(-d ACME) ) then
+    echo 'Code does not exists...enable option to download fesh copy of the code'
+    echo 'exiting.....'
+    exit
+endif
+
 cd ACME
 set src_code = `pwd`
 
-echo '->Fetch and reset hard so that source code points to most recent copy of the master branch ...'
-git fetch origin >& /dev/null
-git reset --hard origin/master >& /dev/null
 
+echo '->Get the hash of the code ...'
+#set hsh      = `git rev-parse --short=10 --verify HEAD | head -n 1`
+set hsh      = `git rev-parse --verify HEAD | head -n 1`
 
-echo '->Get the hash to form file name ...'
-set hsh      = `git rev-parse --short=10 --verify HEAD | head -n 1`
-set date_str = `date +"%b_%d_%Y"`
+#generate branch info
+git branch >& tmp.branch.info
+set tmp_brnch_file_path = `pwd`/tmp.branch.info
+set date_str = `date +"%m%d%Y"`
 
 #Now run the tests for each compiler 
-#Run tests for acme integration as acme_developer is subset of acme_integration
-set cat      = acme_integration
+if ( $do_nag == 1 ) then
+    source $nag_scr_path
+endif
+if ( $do_int == 1 ) then
+    source $intel_scr_path
+endif
 
-source $locdir/nag_acme.csh
-source $locdir/intel_acme.csh
+/bin/rm -rf $tmp_brnch_file_path
 
-
-echo '->Finally delete the code...'
-cd $locdir
-/bin/rm -rf ACME
+if ( $clone_fresh_code == 1 ) then
+    echo '->Finally delete the code...'
+    cd $locdir
+    /bin/rm -rf ACME
+endif
 
 echo '->Move files to a dated folder'
 cd $locdir/$dir_to_store
