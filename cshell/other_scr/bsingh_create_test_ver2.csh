@@ -1,9 +1,22 @@
 #!/bin/csh
 echo ''
-echo '*******************************************'
-echo '         RUNNING '$cat ' Tests' 
-echo '*******************************************'
+echo '**********************************************************'
+echo '         RUNNING '$cat 'tests for compiler:'$comp 
+echo '**********************************************************'
 echo ''
+
+echo 'Gather information about the code (hash etc.)...'
+cd $src_code
+#set hsh      = `git rev-parse --short=10 --verify HEAD | head -n 1`
+set hsh      = `git rev-parse --verify HEAD | head -n 1`
+echo ''
+echo 'Hash of the code is:' $hsh
+echo ''
+
+#Generate branch info
+git branch >& tmp.branch.info
+set tmp_brnch_file_path = `pwd`/tmp.branch.info
+
 cd $src_code/scripts
 
 set gen_base_str       = ''
@@ -13,10 +26,11 @@ set clean_opt = OFF
 if ( $clean_build_aft_run == 1 ) then
     set clean_opt = ON
 endif
-echo 'Clean build is '$clean_opt
+echo 'Cleaning up of the build obj files after tests are run is:'$clean_opt
 set gen_comp_in_dir_nm = '.'
 if ( $gen_base == 1 ) then
-    set gen_base_str =  '-generate baselines_'{$id}
+    set id_base_dir = 'baselines_'{$id}
+    set gen_base_str =  '-generate '$id_base_dir
     set gen_comp_in_dir_nm = '.G.' #append G
     echo 'Generating baselines with id: '$id
 else
@@ -55,7 +69,7 @@ if ( $tot_lnprnt == 0 ) then
     echo 'EXITING the script \!! ....'
     exit -1
 endif
-
+echo 'Total # of test cases in this category:'$tot_lnprnt
 
 #Note: Do not build the test cases and of course do not run the test cases [-autosubmit off; -nobuild on]
 echo ''
@@ -87,7 +101,7 @@ while ( $iline <= $tot_lines)
         set CASE = {$line}{$gen_comp_in_dir_nm}{$id}
 	@ lnprnt = $iline - 2 # subtract 2 as first two lines in tmp_test_names are comments with '#'
 	echo ''
-	echo '['$lnprnt' of '$tot_lnprnt'] Processing testcase:'$CASE '--- [Test case #:'$lnprnt' ;Total testcases:'$tot_lnprnt'] ' `date` 
+	echo '['$lnprnt' of '$tot_lnprnt'] Processing testcase:'$CASE '--- [Test case #:'$lnprnt';Total testcases:'$tot_lnprnt']'
 	#Delete if a case is created in the regular csmruns directory
 	/bin/rm -rf $csmrun_old/$CASE
 	/bin/rm -rf $csmrun_old/sharedlibroot.{$id}
@@ -115,6 +129,18 @@ while ( $iline <= $tot_lines)
     endif
     @ iline  = $iline + 1
 end
+if ( $gen_base == 1 ) then
+    echo 'Generate baseline code info file in baseline directory'
+    /bin/cd $base_dir/$id_base_dir
+    /bin/rm -rf $id.info
+    echo 'Branch info [see * for the branch used]:'        >> $id.info
+    cat $tmp_brnch_file_path                               >> $id.info
+    echo ''                                                >> $id.info
+    echo 'Hash:'                                           >> $id.info
+    echo $hsh 
+    #Remove temporary file
+    /bin/rm -rf $tmp_brnch_file_path
+endif
 echo 'Removing temporary files...'
 cd $src_code/scripts
 /bin/rm tmp_test_names
