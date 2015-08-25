@@ -74,7 +74,7 @@ echo 'Total # of test cases in this category:'$tot_lnprnt
 #Note: Do not build the test cases and of course do not run the test cases [-autosubmit off; -nobuild on]
 echo ''
 echo 'Calling create_test script...  ' `date`
-./create_test -xml_mach $mach -xml_compiler $comp -xml_category $cat -testid $id -testroot $csmroot -baselineroot $base_dir $gen_base_str $comp_base_str  -autosubmit off -nobuild on -clean $clean_opt >& log_{$id}
+./create_test -xml_mach $mach -xml_compiler $comp -xml_category $cat -testid $id -testroot $csmroot -baselineroot $base_dir $gen_base_str $comp_base_str  -autosubmit off -nobuild on -clean $clean_opt >& log_{$id} 
 
 #See if the script encountered any error
 set err_cnt     = `grep -i error log_{$id}|wc -l`
@@ -84,7 +84,7 @@ set abort_cnt   = `grep -i abort log_{$id}|wc -l`
 if ( $tot_err_cnt > 0 ) then
     echo 'Encountered '$tot_err_cnt ' error(s) while running create_test script'
     echo 'Please check the log file:' `pwd`/log_{$id}
-    echo 'Exiting...'
+    echo 'Exiting...'  `date`
     exit -1
 endif
 
@@ -131,7 +131,7 @@ while ( $iline <= $tot_lines)
 end
 if ( $gen_base == 1 ) then
     echo 'Generate baseline code info file in baseline directory'
-    /bin/cd $base_dir/$id_base_dir
+    cd $base_dir/$id_base_dir
     /bin/rm -rf $id.info
     echo 'Branch info [see * for the branch used]:'        >> $id.info
     cat $tmp_brnch_file_path                               >> $id.info

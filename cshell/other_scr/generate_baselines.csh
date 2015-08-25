@@ -7,22 +7,23 @@
 #-------------------------------------#
 
 #For comparing to a baseline
-set comp_base        = 0          #1=compare with baselines; 0= DO NOT compare with  baselines
-set comp_base_id     = ''         #id or name of the baseline directory to compare against
+set comp_base           = 0          #1=compare with baselines; 0= DO NOT compare with  baselines
+set comp_base_id        = ''         #id or name of the baseline directory to compare against
 
-set unqid            = id01       #short unique id to append to these tests
+set unqid               = id01       #short unique id to append to these tests
 
-set do_nag           = 0          #1=generate NAG baselines; 0=Do not generate NAG baselines 
-set do_int           = 1          #1=generate Intel baselines; 0=Do not generate Intel baselines 
+set do_nag              = 1          #1=generate NAG baselines; 0=Do not generate NAG baselines 
+set do_int              = 1          #1=generate Intel baselines; 0=Do not generate Intel baselines 
 
-set clone_fresh_code = 0          #1-clone fresh copy of the code; 0=Use existing copy of the code
-set clean_build_aft_run = 0       #0:do not clean build;1: clean build-NOT WORKING CURRENTLY!!!
+set clone_fresh_code    = 0          #1-clone fresh copy of the code; 0=Use existing copy of the code
+set clean_build_aft_run = 0          #0:do not clean build;1: clean build-NOT WORKING CURRENTLY!!!
+
 #NOTE: acme_developer is subset of acme_integration
-#set cat        = acme_integration
-#set cat_short  = acme_int #keep it short
+set cat        = acme_integration
+set cat_short  = acme_int #keep it short
 
-set cat        = acme_developer
-set cat_short  = acme_dev #keep it short
+#set cat        = acme_developer
+#set cat_short  = acme_dev #keep it short
 
 #set cat        = acme_balli
 #set cat_short  = acme_bal #keep it short
@@ -44,7 +45,7 @@ set git_clone     = 'git@github.com:ACME-Climate/ACME.git'
 set csmrun_old     = /dtemp/sing201/csmruns                     #csmrun directory mentioed in the config_machines.xml
 set csmroot_new    = /dtemp/sing201/acme_testing/reg_tests/     #Directory where all files from this testing are stored
 set base_dir       = /dtemp/sing201/acme_testing/acme_baselines #Baseline to compare against
-set script_path    = ~sing201/trialProgs/cshell/bsingh_create_test_ver2.csh #script to invoke to run all the tests
+set script_path    = ~/scripts_for_git/cshell/other_scr/bsingh_create_test_ver2.csh #script to invoke to run all the tests
 set intel_scr_path = ~/scripts_for_git/cshell/other_scr/intel_acme.csh
 set nag_scr_path   = ~/scripts_for_git/cshell/other_scr/nag_acme.csh
 
@@ -94,12 +95,33 @@ set date_str = `date +"%m%d%Y"`
 #Now run the tests for each compiler 
 if ( $do_nag == 1 ) then
     source $nag_scr_path
+    set nag_id = $id
 endif
 if ( $do_int == 1 ) then
     source $intel_scr_path
+    set int_id = $id
 endif
 
 /bin/rm -rf $tmp_brnch_file_path
+
+
+while(1)
+    cd $locdir
+    echo '->check if jobs are still running.... ' `date`
+    squeue -a --format="%.6i %.75j %.8u %.10M %.16e %.5C %.6D %4p %.2t %.10E %R" |grep sing201 >& tmp_q
+    set chk_q = 0
+    if ( $do_int == 1 ) then
+	/usr/bin/pyhon is_running_job_with_id.py $int_id || set chk_q = 1
+    endif
+    if ( $do_nag == 1 ) then
+	/usr/bin/pyhon is_running_job_with_id.py $int_id || set chk_q = 1
+    endif
+
+    if ( $chk_q == 1 ) then
+	break
+    endif
+    sleep(300)
+end
 
 if ( $clone_fresh_code == 1 ) then
     echo '->Finally delete the code... ' `date`

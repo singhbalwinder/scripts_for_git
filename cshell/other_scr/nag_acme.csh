@@ -7,7 +7,7 @@ echo '->Form id...'
 #set id            = {$unqid}_{$hsh}_mstr_{$cat_short}_{$date_str}_${comp}                #unique id for these tests
 set id            = {$date_str}_{$unqid}_{$cat_short}_${comp}                #unique id for these tests
 
-echo '->Copy XML folder file to the Intel case directory...'
+echo '->Copy XML folder file to the case directory...'
 cd $locdir
 /bin/cp -rf $src_code/scripts/ccsm_utils/Tools/perl5lib/XML $csmroot_new/$id/
 

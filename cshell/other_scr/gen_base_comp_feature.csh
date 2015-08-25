@@ -20,8 +20,7 @@
 #set nag_scr_path     = ~/scripts_for_git/cshell/other_scr/nag_acme.csh
 
 #various control options
-#set clone_fresh_code = 0                          #0: Do not clone fresh copy of main branch, code already exist; 1:clone fresh copy of the m\
-ain branch code
+#set clone_fresh_code = 0                          #0: Do not clone fresh copy of main branch, code already exist; 1:clone fresh copy of the main branch code
 
 #set do_nag           = 0                          #1=Use NAG ; 0= Do not use NAG
 #set do_int           = 1                          #1=Use INTEL ; 0= Do not use INTEL
@@ -62,7 +61,9 @@ if ( $clone_fresh_code == 1 ) then
     git clone git@github.com:ACME-Climate/ACME.git >& /dev/null
     cd ACME
     echo '--> Checkout hash of root [this is the point where feature branch branched off]'
+    echo '--> ========= Output from git checkout ==========='
     git checkout $hsh    
+    echo '--> ========= Output from git checkout ENDS==========='
 else
     echo '--> Use an existing code as main branch code'
     cd ACME
