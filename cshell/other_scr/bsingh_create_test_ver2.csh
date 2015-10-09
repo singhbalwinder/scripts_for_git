@@ -17,7 +17,7 @@ echo ''
 git branch >& tmp.branch.info
 set tmp_brnch_file_path = `pwd`/tmp.branch.info
 
-cd $src_code/scripts
+cd $src_code/$scr_dir
 
 set gen_base_str       = ''
 set comp_base_str      = ''
@@ -54,12 +54,12 @@ endif
 
 #Go to the folder where manage_xml_entries script is and query it to get all test case names:
 echo 'Obtaining test case names using manage_xml_entries ...'
-ccsm_utils/Testlistxml/manage_xml_entries -query -outputlist -machine $mach -compiler $comp -category $cat >& tmp_test_names
+$manage_test_scr -query -outputlist -machine $mach -compiler $comp -category $cat -component $component >& tmp_test_names
 echo 'Got the names from manage_xml_entries ...'
 
 
 set tot_lines = `cat tmp_test_names| wc -l` 
-@ tot_lnprnt  = $tot_lines - 2 # subtract 2 as first two lines in tmp_test_names are comments with '#'
+@ tot_lnprnt  = $tot_lines - 3 # subtract 3(2 for pre-CIME) as first two lines in tmp_test_names are comments with '#'
 set quit_scr = 0
 if ( $tot_lnprnt == 0 ) then 
     echo ''
@@ -70,24 +70,15 @@ if ( $tot_lnprnt == 0 ) then
     exit -1
 endif
 echo 'Total # of test cases in this category:'$tot_lnprnt
-
-#Note: Do not build the test cases and of course do not run the test cases [-autosubmit off; -nobuild on]
-echo ''
-echo 'Calling create_test script...  ' `date`
-./create_test -xml_mach $mach -xml_compiler $comp -xml_category $cat -testid $id -testroot $csmroot -baselineroot $base_dir $gen_base_str $comp_base_str  -autosubmit off -nobuild on -clean $clean_opt >& log_{$id} 
-
-#See if the script encountered any error
-set err_cnt     = `grep -i error log_{$id}|wc -l`
-set abort_cnt   = `grep -i abort log_{$id}|wc -l`
-@ tot_err_cnt = $err_cnt + $abort_cnt
-
-if ( $tot_err_cnt > 0 ) then
-    echo 'Encountered '$tot_err_cnt ' error(s) while running create_test script'
-    echo 'Please check the log file:' `pwd`/log_{$id}
-    echo 'Exiting...'  `date`
+if ( $tot_lnprnt < 1  ) then
+    echo 'Total number of test cases to run are:'$tot_lnprnt ' (i.e. < 1)...exiting...' `date`
     exit -1
 endif
 
+#Note: Do not build the test cases and of course do not run the test cases [-autosubmit off; -nobuild on]
+echo ''
+echo 'Calling create_test script...  ' `date` `pwd`
+./create_test -xml_mach $mach -xml_compiler $comp -xml_category $cat -testid $id -testroot $csmroot -baselineroot $base_dir $gen_base_str $comp_base_str  -autosubmit off -nobuild on -clean $clean_opt  >& log_{$id} || echo 'Error in create test script:'`pwd`/log_{$id} && exit -1
 echo 'Calling create_test script...DONE\!!\!!  ' `date`
 echo ''
 #Loop through all the test cases to build them and submit the script
@@ -99,7 +90,7 @@ while ( $iline <= $tot_lines)
     set line    = `awk -v ln=$iline '{if (NR==ln) print $0}' tmp_test_names` #extract each line in the file
     if( `echo $line | cut -c1` != '#' ) then #ignore first two line in the file with "#" in front of them
         set CASE = {$line}{$gen_comp_in_dir_nm}{$id}
-	@ lnprnt = $iline - 2 # subtract 2 as first two lines in tmp_test_names are comments with '#'
+	@ lnprnt = $iline - 3 # subtract 3 as first two lines in tmp_test_names are comments with '#'
 	echo ''
 	echo '['$lnprnt' of '$tot_lnprnt'] Processing testcase:'$CASE '--- [Test case #:'$lnprnt';Total testcases:'$tot_lnprnt']'
 	#Delete if a case is created in the regular csmruns directory
@@ -124,7 +115,7 @@ while ( $iline <= $tot_lines)
         echo '      Submitting testcase:'$CASE `date`
 	#Submit the run
 	./$CASE.submit >& /dev/null
-	cd $src_code/scripts
+	cd $src_code/$scr_dir
 	echo '      '$CASE 'DONE\!!\!!'
     endif
     @ iline  = $iline + 1
@@ -142,7 +133,7 @@ if ( $gen_base == 1 ) then
     /bin/rm -rf $tmp_brnch_file_path
 endif
 echo 'Removing temporary files...'
-cd $src_code/scripts
+cd $src_code/$scr_dir
 /bin/rm tmp_test_names
 /bin/mv log_{$id} $locdir/
 echo 'ALL DONE\!!\!!'

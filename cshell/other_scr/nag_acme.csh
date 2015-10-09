@@ -9,7 +9,7 @@ set id            = {$date_str}_{$unqid}_{$cat_short}_${comp}                #un
 
 echo '->Copy XML folder file to the case directory...'
 cd $locdir
-/bin/cp -rf $src_code/scripts/ccsm_utils/Tools/perl5lib/XML $csmroot_new/$id/
+/bin/cp -rf $src_code/$scr_dir/ccsm_utils/Tools/perl5lib/XML $csmroot_new/$id/
 
 set csmroot       = $csmroot_new/$id
 set cprnc_exe     = /home/sing201/acme/tools/cprnc_nag/cprnc

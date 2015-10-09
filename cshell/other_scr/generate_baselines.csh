@@ -35,6 +35,10 @@ set cat_short  = acme_int #keep it short
 #-------------------------------------#
 #-------------------------------------#
 
+set mach    = blues                                    #machine name
+set component = allactive
+set scr_dir = 'cime/scripts'
+set manage_test_scr = 'manage_testlists'
 #Directory for storing scripts used for generating these baselines:
 set dir_to_store  = baselines_by_date
 
@@ -69,7 +73,7 @@ if($do_nag != 1 && $do_int != 1) then
     exit -1
 endif
 
-set mach   = cascade                                    #machine name
+
 set locdir = `pwd`
 
 if ( $clone_fresh_code == 1 ) then
@@ -94,40 +98,40 @@ set date_str = `date +"%m%d%Y"`
 
 #Now run the tests for each compiler 
 if ( $do_nag == 1 ) then
-    source $nag_scr_path
+    source $nag_scr_path || echo 'Error runing nag test script' && exit -1
     set nag_id = $id
 endif
 if ( $do_int == 1 ) then
-    source $intel_scr_path
+    source $intel_scr_path || echo 'Error runing intel test script' && exit -1
     set int_id = $id
 endif
 
 /bin/rm -rf $tmp_brnch_file_path
 
 
-while(1)
-    cd $locdir
-    echo '->check if jobs are still running.... ' `date`
-    squeue -a --format="%.6i %.75j %.8u %.10M %.16e %.5C %.6D %4p %.2t %.10E %R" |grep sing201 >& tmp_q
-    set chk_q = 0
-    if ( $do_int == 1 ) then
-	/usr/bin/pyhon is_running_job_with_id.py $int_id || set chk_q = 1
-    endif
-    if ( $do_nag == 1 ) then
-	/usr/bin/pyhon is_running_job_with_id.py $int_id || set chk_q = 1
-    endif
+#while(1)
+#    cd $locdir
+#    echo '->check if jobs are still running.... ' `date`
+#    squeue -a --format="%.6i %.75j %.8u %.10M %.16e %.5C %.6D %4p %.2t %.10E %R" |grep sing201 >& tmp_q
+#    set chk_q = 0
+#    if ( $do_int == 1 ) then
+#	/usr/bin/pyhon is_running_job_with_id.py $int_id || set chk_q = 1
+#    endif
+#    if ( $do_nag == 1 ) then
+#	/usr/bin/pyhon is_running_job_with_id.py $int_id || set chk_q = 1
+#    endif
+#
+#    if ( $chk_q == 1 ) then
+#	break
+#    endif
+#    sleep(300)
+#end
 
-    if ( $chk_q == 1 ) then
-	break
-    endif
-    sleep(300)
-end
-
-if ( $clone_fresh_code == 1 ) then
-    echo '->Finally delete the code... ' `date`
-    cd $locdir
-    /bin/rm -rf ACME
-endif
+#if ( $clone_fresh_code == 1 ) then
+#    echo '->Finally delete the code... ' `date`
+#    cd $locdir
+#    /bin/rm -rf ACME
+#endif
 
 echo '->Move files to a dated folder ' `date`
 cd $locdir/$dir_to_store
