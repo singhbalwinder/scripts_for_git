@@ -12,7 +12,7 @@ set comp_base_id        = ''         #id or name of the baseline directory to co
 
 set unqid               = id01       #short unique id to append to these tests
 
-set do_nag              = 1          #1=generate NAG baselines; 0=Do not generate NAG baselines 
+set do_nag              = 0          #1=generate NAG baselines; 0=Do not generate NAG baselines 
 set do_int              = 1          #1=generate Intel baselines; 0=Do not generate Intel baselines 
 
 set clone_fresh_code    = 0          #1-clone fresh copy of the code; 0=Use existing copy of the code
@@ -35,7 +35,7 @@ set cat_short  = acme_int #keep it short
 #-------------------------------------#
 #-------------------------------------#
 
-set mach    = blues                                    #machine name
+set mach    = constance                                    #machine name
 set component = allactive
 set scr_dir = 'cime/scripts'
 set manage_test_scr = 'manage_testlists'
@@ -46,9 +46,9 @@ set dir_to_store  = baselines_by_date
 set git_clone     = 'git@github.com:ACME-Climate/ACME.git'
 
 #paths
-set csmrun_old     = /dtemp/sing201/csmruns                     #csmrun directory mentioed in the config_machines.xml
-set csmroot_new    = /dtemp/sing201/acme_testing/reg_tests/     #Directory where all files from this testing are stored
-set base_dir       = /dtemp/sing201/acme_testing/acme_baselines #Baseline to compare against
+set csmrun_old     = /pic/scratch/$LOGNAME/csmruns                     #csmrun directory mentioed in the config_machines.xml
+set csmroot_new    = /pic/projects/climate/sing201/acme1/acme_testing/regtest     #Directory where all files from this testing are stored
+set base_dir       = /pic/projects/climate/acme_baselines #Baseline to compare against
 set script_path    = ~/scripts_for_git/cshell/other_scr/bsingh_create_test_ver2.csh #script to invoke to run all the tests
 set intel_scr_path = ~/scripts_for_git/cshell/other_scr/intel_acme.csh
 set nag_scr_path   = ~/scripts_for_git/cshell/other_scr/nag_acme.csh

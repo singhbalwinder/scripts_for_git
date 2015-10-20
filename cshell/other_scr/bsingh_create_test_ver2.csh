@@ -54,8 +54,7 @@ endif
 
 #Go to the folder where manage_xml_entries script is and query it to get all test case names:
 echo 'Obtaining test case names using manage_xml_entries ...'
-$manage_test_scr -query -outputlist -machine $mach -compiler $comp -category $cat -component $component >& tmp_test_names
-echo 'Got the names from manage_xml_entries ...'
+./$manage_test_scr -query -outputlist -machine $mach -compiler $comp -category $cat -component $component >& tmp_test_names
 
 
 set tot_lines = `cat tmp_test_names| wc -l` 
@@ -67,8 +66,11 @@ if ( $tot_lnprnt == 0 ) then
     echo 'ERROR: please check the test category name, you entered:' $cat
     echo $tot_lnprnt ' test case(s) found for this category'
     echo 'EXITING the script \!! ....'
+    echo '========================================================'
     exit -1
 endif
+echo 'Got the names from manage_xml_entries ...'
+
 echo 'Total # of test cases in this category:'$tot_lnprnt
 if ( $tot_lnprnt < 1  ) then
     echo 'Total number of test cases to run are:'$tot_lnprnt ' (i.e. < 1)...exiting...' `date`
@@ -77,7 +79,7 @@ endif
 
 #Note: Do not build the test cases and of course do not run the test cases [-autosubmit off; -nobuild on]
 echo ''
-echo 'Calling create_test script...  ' `date` `pwd`
+echo 'Calling create_test script...  ' `date`
 ./create_test -xml_mach $mach -xml_compiler $comp -xml_category $cat -testid $id -testroot $csmroot -baselineroot $base_dir $gen_base_str $comp_base_str  -autosubmit off -nobuild on -clean $clean_opt  >& log_{$id} || echo 'Error in create test script:'`pwd`/log_{$id} && exit -1
 echo 'Calling create_test script...DONE\!!\!!  ' `date`
 echo ''
@@ -108,6 +110,8 @@ while ( $iline <= $tot_lines)
 	./xmlchange -file env_run.xml   -id DOUT_S_ROOT      -val $csmroot/archive/$CASE
 	./xmlchange -file env_run.xml   -id BFBFLAG          -val TRUE
 	./xmlchange -file env_test.xml  -id CCSM_CPRNC       -val $cprnc_exe 
+	/bin/rm -rf $CASE.test
+	./cesm_setup >& /dev/null
 	echo '      Building testcase:'$CASE `date`
 	#Build the model
 	./$CASE.test_build >& log_bld
